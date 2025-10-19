@@ -50,3 +50,26 @@ We recommend deploying the backend to Render (https://render.com) for a simple, 
 		node server.js
 		```
 
+## Authentication (signup / login)
+
+This backend includes a simple role-based authentication system for demo purposes.
+
+- Endpoints:
+  - POST /api/signup — body: { email, password, role } (role can be "member" or "staff")
+  - POST /api/login — body: { email, password } -> returns { token, user }
+  - GET /api/me — requires Authorization: Bearer <token>
+
+- Tokens are JWTs signed with `process.env.JWT_SECRET`. If not set, a development secret is used (`dev-secret`). For production, set `JWT_SECRET` to a strong random value in Render's env settings.
+
+- Users are stored in `server/users.json` (file-backed, for demos only). You can create an initial staff user with the signup endpoint or by editing `users.json` directly (not recommended for production).
+
+Example to create a staff user via curl (local):
+
+```bash
+curl -X POST http://localhost:5000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"staff@example.com","password":"yourpassword","role":"staff"}'
+```
+
+After signup/login, the frontend stores the token in localStorage and includes it in requests to protected endpoints.
+

@@ -4,16 +4,89 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import crypto from "crypto";
 import Stripe from "stripe";
+import fs from "fs";
+import path from "path";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json()); 
+
+const USERS_FILE = path.join(process.cwd(), "server", "users.json");
+function readUsers() {
+  try {
+    const raw = fs.readFileSync(USERS_FILE, "utf8");
+    return JSON.parse(raw || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+function writeUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function generateToken(user) {
+  const payload = { id: user.id, email: user.email, role: user.role };
+  return jwt.sign(payload, process.env.JWT_SECRET || "dev-secret", { expiresIn: "7d" });
+}
+
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: "Missing authorization" });
+  const token = header.replace("Bearer ", "");
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
+    req.user = payload;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+app.post("/api/signup", async (req, res) => {
+  const { email, password, role } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+
+  const users = readUsers();
+  if (users.find((u) => u.email === email)) {
+    return res.status(400).json({ error: "User already exists" });
+  }
+
+  const hashed = await bcrypt.hash(password, 10);
+  const newUser = { id: crypto.randomUUID(), email, password: hashed, role: role || "member" };
+  users.push(newUser);
+  writeUsers(users);
+
+  const token = generateToken(newUser);
+  res.json({ token, user: { id: newUser.id, email: newUser.email, role: newUser.role } });
+});
+
+// Login
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
+
+  const users = readUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+  const token = generateToken(user);
+  res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+});
+
+app.get("/api/me", authMiddleware, (req, res) => {
+  res.json({ user: req.user });
+});
 
 app.get("/api/events", async (req, res) => {
   try {

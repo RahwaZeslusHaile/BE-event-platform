@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "c2665c0b-78b5-49f5-bee6-e50a9ec6ecef",
+    "email": "rahwazeslase@gmail.com",
+    "password": "$2a$10$F6m0SZP8EeBQCWfOQLjO/ueTxh.jh1WQBlLM25FQodH6S9s43/We.",
+    "role": "member"
+  },
+  {
+    "id": "ae07bfde-363a-46a7-8bf9-3596367013cd",
+    "email": "mikiyas@gmail.com",
+    "password": "$2a$10$sI9fFGmAZmnaRbsD8e/sgu41kdWeX1/IOWbikOksjZ4cYsAIHYOO6",
+    "role": "staff"
+  }
+]

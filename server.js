@@ -19,7 +19,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 app.use(cors());
 app.use(express.json()); 
 
-const USERS_FILE = path.join(process.cwd(), "server", "users.json");
+const USERS_FILE = path.join(process.cwd(), "users.json");
 function readUsers() {
   try {
     const raw = fs.readFileSync(USERS_FILE, "utf8");
@@ -29,7 +29,14 @@ function readUsers() {
   }
 }
 function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  try {
+    // ensure parent directory exists
+    fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  } catch (err) {
+    console.error("Failed to write users file:", err);
+    throw err;
+  }
 }
 
 function generateToken(user) {
@@ -68,7 +75,6 @@ app.post("/api/signup", async (req, res) => {
   res.json({ token, user: { id: newUser.id, email: newUser.email, role: newUser.role } });
 });
 
-// Login
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "Missing email or password" });
